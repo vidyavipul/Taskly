@@ -7,7 +7,7 @@ from database import SessionLocal
 from sqlalchemy.orm import Session
 from starlette import status
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from jose import jwt
+from jose import jwt, JWTError 
 from datetime import timedelta, datetime, timezone
 
 # Initialize router for authentication endpoints
@@ -63,7 +63,19 @@ def create_access_token(username: str, user_id: int, expires_delta: timedelta):
     return jwt.encode(encode, SECRET_KEY, algorithm=AlGORITHM)
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
-    pass
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[AlGORITHM])
+        username: str = payload.get('sub')
+        user_id: int = payload.get('id')
+        if username is None or user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail='Could not validate user')
+        return {'username': username, 'user_id': user_id}
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Could not validate user') 
 
 # Endpoint to register a new user
 @router.post("/auth/", status_code=status.HTTP_201_CREATED)
